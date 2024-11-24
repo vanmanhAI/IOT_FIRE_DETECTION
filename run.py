@@ -6,26 +6,14 @@ import websockets
 from io import BytesIO
 from PIL import Image, UnidentifiedImageError
 from app.mqtt import init_mqtt_client  # Import MQTT client từ mqtt.py
+from app.routes import main_bp
 
 # Flask app setup
 app = Flask(__name__)
 
-@app.route('/hello', methods=['GET'])
-def hello():
-    return jsonify({"message": "Hello World!"}), 200
-
-@app.route('/light', methods=['POST'])
-def receive_light_data():
-    data = request.get_json()
-    if not data:
-      return jsonify({"error": "No data received"}), 400
-
-    light_state = data.get("light_value")
-    if light_state is None:
-      return jsonify({"error": "Invalid data format"}), 400
-
-    print(f"Light state received: {light_state}")
-    return jsonify({"message": "Data received successfully", "light_value": light_state}), 200
+# @app.route('/hello', methods=['GET'])
+# def hello():
+#     return jsonify({"message": "Hello World!"}), 200
 
 # Function to run Flask server
 async def run_flask():
@@ -60,6 +48,7 @@ async def run_mqtt():
 
 # Main function to run all components
 async def main():
+  app.register_blueprint(main_bp)  
   loop = asyncio.get_running_loop()
   await asyncio.gather(
     run_flask(),          # Flask server
