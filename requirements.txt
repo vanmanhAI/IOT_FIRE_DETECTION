@@ -1,0 +1,5 @@
+Flask
+hypercorn
+paho-mqtt
+websockets
+Pillow
