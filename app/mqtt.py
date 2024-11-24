@@ -1,6 +1,5 @@
-import asyncio
 import paho.mqtt.client as mqtt
-from websocket import send_message
+import json
 
 # Kênh MQTT
 PUMP_TOPIC = "dieukhienbom"         # Điều khiển bơm
@@ -24,7 +23,7 @@ def init_mqtt_client():
 
   def on_message(client, userdata, msg):
     print(f"Message from { msg.topic }: { msg.payload.decode('utf-8') }")
-    asyncio.run_coroutine_threadsafe(send_message(message), loop)
+
 
   client.on_connect = on_connect
   client.on_message = on_message
