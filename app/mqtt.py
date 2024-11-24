@@ -1,5 +1,6 @@
 import paho.mqtt.client as mqtt
 import json
+import requests
 
 # Kênh MQTT
 PUMP_TOPIC = "dieukhienbom"         # Điều khiển bơm
@@ -22,7 +23,21 @@ def init_mqtt_client():
       print(f"Failed to connect, return code {rc}")
 
   def on_message(client, userdata, msg):
-    print(f"Message from { msg.topic }: { msg.payload.decode('utf-8') }")
+    if msg.topic == FIRE_TOPIC:
+      fire_value = msg.payload.decode('utf-8')
+      url = "http://localhost:5000/fire-alert"
+      headers = {"Content-Type": "application/json"}
+      if fire_value == "0":
+        print("Fire detected! Sending alert...")
+        # Gửi request đến Flask server
+        data = {"fire_detected": True}
+        try:
+          response = requests.post(url, json=data, headers=headers)
+          print(f"Response: { response.status_code }, { response.text }")
+        except Exception as e:
+          print(f"Error while sending request: {e}")
+      else:
+        response = requests.post(url, json={"fire_detected": False}, headers=headers)
 
 
   client.on_connect = on_connect
