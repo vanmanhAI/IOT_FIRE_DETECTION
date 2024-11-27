@@ -10,7 +10,3 @@ def hello():
 @main_bp.route('/stream')
 def index():
     return Response(get_image_stream(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-
-
-

@@ -1,5 +1,8 @@
-Flask
-hypercorn
-paho-mqtt
-websockets
-Pillow
+Flask==2.3.2
+Hypercorn==0.14.3
+websockets==11.0.3
+paho-mqtt==1.6.1
+Pillow==9.5.0
+pymongo==4.3.3
+requests==2.31.0
+asyncio==3.4.3
