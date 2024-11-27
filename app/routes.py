@@ -11,27 +11,23 @@ def hello():
 def index():
     return Response(get_image_stream(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@main_bp.route('/fire-alert', methods=['POST'])
+@main_bp.route('/fire-alert', methods=['GET'])
 def fire_alert():
     try:
-        # Lấy dữ liệu JSON từ request
+        # Lấy dữ liệu từ MQTT gửi tới
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-
-        fire_detected = data.get("fire_detected")
-        if fire_detected is None:
-            return jsonify({"error": "Invalid data format"}), 400
-
-        if fire_detected:
-            print("Cảnh báo: Cháy được phát hiện!")
-            # Xử lý logic khi phát hiện cháy (gửi thông báo, kích hoạt hệ thống, v.v.)
-        else:
-            print("Không phát hiện cháy.")
-            # Xử lý logic khi không có cháy (cập nhật trạng thái, v.v.)
-
-        return jsonify({"message": "Fire alert processed successfully", "fire_detected": fire_detected}), 200
+        print(data['lua1'], data['lua2'], data['lua3'], data['khoi'])
+        print("-------------------")
+        return jsonify({
+            "message": "Received data successfully",
+            "lua1": data['lua1'],
+            "lua2": data['lua2'],
+            "lua3": data['lua3'],
+            "khoi": data['khoi']
+        }), 200
     except Exception as e:
-        print(f"Error in fire_alert: {e}")
+        print(f"Error processing fire-alert: {e}")
         return jsonify({"error": "Internal server error"}), 500
+
+
 
