@@ -3,8 +3,9 @@ import json
 import asyncio
 from app.websocket import send_mqtt_data_to_clients
 
-PUMP_TOPIC = "dieukhienbom"         
-GENERAL_TOPIC = "cambien/duLieu"  
+PUMP_TOPIC = "dieukhienbom"
+GENERAL_TOPIC = "cambien/duLieu"
+
 
 def init_mqtt_client():
   client = mqtt.Client()
@@ -13,10 +14,10 @@ def init_mqtt_client():
 
   def on_connect(client, userdata, flags, rc):
     if rc == 0:
-        print("Connected to MQTT Broker!")
-        client.subscribe(GENERAL_TOPIC)
+      print("Connected to MQTT Broker!")
+      client.subscribe(GENERAL_TOPIC)
     else:
-        print(f"Failed to connect, return code {rc}")
+      print(f"Failed to connect, return code {rc}")
 
   def on_message(client, userdata, msg):
     try:
@@ -25,7 +26,7 @@ def init_mqtt_client():
       
       # Use asyncio.run() to ensure event loop
       try:
-        asyncio.run(send_mqtt_data_to_clients(data))
+        asyncio.run(send_mqtt_data_to_clients(data))        
       except RuntimeError:
         # If event loop is already running, use create_task()
         asyncio.create_task(send_mqtt_data_to_clients(data))

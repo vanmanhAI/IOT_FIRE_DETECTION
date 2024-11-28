@@ -11,6 +11,8 @@ from app.routes import main_bp
 # Flask app setup
 app = Flask(__name__)
 
+current_mqtt_client = None
+
 # Function to run Flask server
 async def run_flask():
   config = Config()
@@ -25,6 +27,8 @@ async def handle_connection(websocket, *_):
       image = Image.open(BytesIO(message))
       image.save("image.jpg")
       print(f"Received and saved image, size: {len(message)} bytes")
+
+      await websocket.send("Image received successfully")
     except UnidentifiedImageError as e:
       print(f"Failed to decode image: {e}")
     except Exception as e:
@@ -40,6 +44,7 @@ async def run_mqtt():
   client = init_mqtt_client()
   client.connect("06a3f96beed14b778927addb52b4de68.s1.eu.hivemq.cloud", 8883, 60)
   client.loop_start()  # Start MQTT loop in background
+  current_mqtt_client = client
   await asyncio.sleep(1)  # Keep coroutine alive to allow other tasks to run
 
 # Main function to run all components
