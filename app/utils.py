@@ -29,6 +29,7 @@ def get_image_stream_client():
       yield b''
 
 def get_image_stream(mqtt_client):
+  print("Starting image stream...")
   while True:
     try:
       with open("image.jpg", "rb") as f:
@@ -55,20 +56,13 @@ def get_image_stream(mqtt_client):
 
         # Gửi lên MQTT, kiểm tra kết nối trước khi gửi
         if mqtt_client.is_connected():
+          print("Sending data to MQTT...")
           mqtt_client.publish("fire_detect", json.dumps(data))
         else:
           print("MQTT client not connected.")
 
-      img = result.plot()
-      image = Image.fromarray(img)
-
-      img_io = BytesIO()
-      image.save(img_io, 'JPEG')
-      img_io.seek(0)
-      yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + img_io.read() + b'\r\n')
     except Exception as e:
       print("Error reading image:", e)
-      yield b''
 
 async def websocket_broadcast(data):
   """Gửi dữ liệu tới WebSocket."""

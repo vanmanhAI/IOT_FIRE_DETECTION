@@ -56,7 +56,7 @@ async def run_image_stream():
         return
     # Tạo một task riêng cho get_image_stream
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, get_image_stream, current_mqtt_client)
+    loop.run_in_executor(None, get_image_stream, current_mqtt_client)
 
 # Main function to run all components
 async def main():
