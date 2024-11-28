@@ -4,7 +4,6 @@ import json
 from ultralytics import YOLO
 import websockets
 import math
-from run import current_mqtt_client
 # Load a model
 model = YOLO("app/model/best.pt")
 
