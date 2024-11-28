@@ -7,6 +7,27 @@ import math
 # Load a model
 model = YOLO("app/model/best.pt")
 
+def get_image_stream_client():
+  while True:
+    try:
+      with open("image.jpg", "rb") as f:
+        image_bytes = f.read()
+      image = Image.open(BytesIO(image_bytes))
+
+      results = model.predict(image, show=False, imgsz=240)
+      result = results[0]
+
+      img = result.plot()
+      image = Image.fromarray(img)
+
+      img_io = BytesIO()
+      image.save(img_io, 'JPEG')
+      img_io.seek(0)
+      yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + img_io.read() + b'\r\n')
+    except Exception as e:
+      print("Error reading image:", e)
+      yield b''
+
 def get_image_stream(mqtt_client):
   while True:
     try:
