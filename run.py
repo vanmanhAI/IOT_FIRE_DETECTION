@@ -8,6 +8,7 @@ from PIL import Image, UnidentifiedImageError
 from app.mqtt import init_mqtt_client  # Import MQTT client từ mqtt.py
 from app.routes import main_bp
 from app.utils import get_image_stream
+from app.websocket import websocket_server
 
 # Flask app setup
 app = Flask(__name__)
@@ -20,25 +21,6 @@ async def run_flask():
   config.bind = ["0.0.0.0:5000"]  # Cấu hình địa chỉ và cổng
   await serve(app, config)
 
-# WebSocket server
-async def handle_connection(websocket, *_):
-  print(f"Client connected: {websocket.remote_address}")
-  async for message in websocket:
-    try:
-      image = Image.open(BytesIO(message))
-      image.save("image.jpg")
-      print(f"Received and saved image, size: {len(message)} bytes")
-
-      await websocket.send("Image received successfully")
-    except UnidentifiedImageError as e:
-      print(f"Failed to decode image: {e}")
-    except Exception as e:
-      print(f"An error occurred: {e}")
-
-async def websocket_server():
-  print("Starting WebSocket server on ws://0.0.0.0:3001")
-  async with websockets.serve(handle_connection, '0.0.0.0', 3001):
-    await asyncio.Future()  # Keeps the server running
 
 # MQTT client runner
 async def run_mqtt():
@@ -50,13 +32,13 @@ async def run_mqtt():
   
 # Function to run image stream
 async def run_image_stream():
-    global current_mqtt_client
-    if current_mqtt_client is None:
-        print("MQTT client is not initialized.")
-        return
-    # Tạo một task riêng cho get_image_stream
-    loop = asyncio.get_event_loop()
-    loop.run_in_executor(None, get_image_stream, current_mqtt_client)
+  global current_mqtt_client
+  if current_mqtt_client is None:
+    print("MQTT client is not initialized.")
+    return
+  # Tạo một task riêng cho get_image_stream
+  loop = asyncio.get_event_loop()
+  loop.run_in_executor(None, get_image_stream, current_mqtt_client)
 
 # Main function to run all components
 async def main():

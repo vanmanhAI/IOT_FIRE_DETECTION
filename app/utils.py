@@ -47,12 +47,10 @@ def get_image_stream(mqtt_client):
 
       if result.boxes is None or len(result.boxes) == 0:
         print("No objects detected.")
-        # Reset thời gian nếu không phát hiện lửa
         fire_detected_start_time = None
       else:
         # Phát hiện lửa
         if fire_detected_start_time is None:
-          # Bắt đầu đếm thời gian
           fire_detected_start_time = time.time()
           print("Fire detected, starting timer...")
         else:
@@ -60,7 +58,6 @@ def get_image_stream(mqtt_client):
           elapsed_time = time.time() - fire_detected_start_time
           print(f"Fire detected for {elapsed_time:.2f} seconds")
           if elapsed_time >= 5:
-            # Phát hiện lửa liên tục trong ít nhất 5 giây
             xywh = result.boxes.xywh[0].tolist()
             x_center = xywh[0] / result.orig_shape[1]
             y_center = xywh[1] / result.orig_shape[0]
