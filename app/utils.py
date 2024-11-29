@@ -6,6 +6,7 @@ import websockets
 import time
 import cv2 as cv
 from app.websocket import broadcast
+import math
 
 # Load a model
 model = YOLO("app/model/best.pt")
@@ -80,14 +81,25 @@ async def websocket_broadcast(data):
     await broadcast(message)
 
 def TinhToan(x: float, y: float):
-  goc1 = 45 + x * 35.0
-  tmp = 40 + y * 50.0
-  goc2From = tmp - 20
-  goc2To = tmp + 20
-  return  {
-    "goc1": int(goc1),
-    "goc2From": int(goc2From),
-    "goc2To": int(goc2To)
-  }
+    tmp1 = math.atan(abs(x - 0.76) * 25.0 / 30.0)
+    alpha_degree = math.degrees(tmp1)
+    goc1 = 45
+    if x < 0.76:
+        goc1 = 90 - alpha_degree - 12.0 * (0.76 - x) / 0.76
+    else:
+        goc1 = 90 + alpha_degree + 12.0 * (x - 0.76) / 0.24
+    print(goc1)
+    tmp2 = math.atan(abs(y - 1) * 25.0 / 30.0)
+    alpha_degree = math.degrees(tmp2)
+    goc2 = 90 - alpha_degree
+    # print(goc2)
+    goc2From = goc2 - 20
+    goc2To = goc2 + 20
+
+    return  {
+      "goc1": int(goc1),
+      "goc2From": int(goc2From),
+      "goc2To": int(goc2To)
+    }
 
   # gui len mqtt voi topic la dieukhienbom {"goc1": goc1, "goc2From": 90, "goc2To": 90}
