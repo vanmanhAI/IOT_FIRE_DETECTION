@@ -9,28 +9,28 @@ connected_image_clients = set()
 # Tập hợp client kết nối cho dữ liệu real-time
 connected_data_clients = set()
 
-# async def handle_connection(websocket, *_):
-#   print(f"Client connected: {websocket.remote_address}")
-#   connected_clients.add(websocket)  # Thêm client vào danh sách
-#   async for message in websocket:
-#     try:
-#       image = Image.open(BytesIO(message))
-#       image.save("image.jpg")
-#       print(f"Received and saved image, size: {len(message)} bytes")
-
-#       await websocket.send("Image received successfully")
-      
-#     except UnidentifiedImageError as e:
-#       print(f"Failed to decode image: {e}")
-#     except Exception as e:
-#       print(f"An error occurred: {e}")
-#     finally:
-#         connected_clients.remove(websocket)  # Xóa client khi ngắt kết nối
-#         print(f"Client disconnected: {websocket.remote_address}")
-
 # Hàm xử lý kết nối chung
 async def handle_connection(websocket):
-    if websocket.request.path == "/stream":
+    print(f"path: {websocket.request.path}")
+    
+    if websocket.request.path == "/":
+        print(f"[Data Server] Client connected: {websocket.remote_address}")
+        connected_data_clients.add(websocket)
+        try:
+            async for message in websocket:
+                try:
+                    data = json.loads(message)
+                    print(f"[Data Server] Received data: {data}")
+                except json.JSONDecodeError as e:
+                    print(f"[Data Server] Failed to decode JSON: {e}")
+                except Exception as e:
+                    print(f"[Data Server] An error occurred: {e}")
+        except websockets.exceptions.ConnectionClosed as e:
+            print(f"[Data Server] Connection closed: {e}")
+        finally:
+            connected_data_clients.remove(websocket)
+            print(f"[Data Server] Client disconnected: {websocket.remote_address}")
+    else:
         print(f"[Image Server] Client connected: {websocket.remote_address}")
         connected_image_clients.add(websocket)
         try:
@@ -51,24 +51,6 @@ async def handle_connection(websocket):
         finally:
             connected_image_clients.remove(websocket)
             print(f"[Image Server] Client disconnected: {websocket.remote_address}")
-
-    else:
-        print(f"[Data Server] Client connected: {websocket.remote_address}")
-        connected_data_clients.add(websocket)
-        try:
-            async for message in websocket:
-                try:
-                    data = json.loads(message)
-                    print(f"[Data Server] Received data: {data}")
-                except json.JSONDecodeError as e:
-                    print(f"[Data Server] Failed to decode JSON: {e}")
-                except Exception as e:
-                    print(f"[Data Server] An error occurred: {e}")
-        except websockets.exceptions.ConnectionClosed as e:
-            print(f"[Data Server] Connection closed: {e}")
-        finally:
-            connected_data_clients.remove(websocket)
-            print(f"[Data Server] Client disconnected: {websocket.remote_address}")
 
 
 async def broadcast(message):
