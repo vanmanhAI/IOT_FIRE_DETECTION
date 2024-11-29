@@ -1,7 +1,7 @@
 import paho.mqtt.client as mqtt
 import json
 import asyncio
-from app.websocket import send_mqtt_data_to_clients
+from app.utils import websocket_broadcast
 
 PUMP_TOPIC = "dieukhienbom"
 GENERAL_TOPIC = "cambien/duLieu"
@@ -24,13 +24,8 @@ def init_mqtt_client():
       data = json.loads(msg.payload.decode('utf-8'))
       print(f"Received: {data['lua1']} {data['lua2']} {data['lua3']} {data['khoi']}")
       
-      # Use asyncio.run() to ensure event loop
-      try:
-        asyncio.run(send_mqtt_data_to_clients(data))        
-      except RuntimeError:
-        # If event loop is already running, use create_task()
-        asyncio.create_task(send_mqtt_data_to_clients(data))
-    
+      # Gửi dữ liệu đến WebSocket
+      asyncio.run(websocket_broadcast(data))
     except Exception as e:
       print(f"MQTT message processing error: {e}")
 

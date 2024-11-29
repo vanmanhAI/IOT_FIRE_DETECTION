@@ -48,7 +48,7 @@ async def run_mqtt():
   current_mqtt_client.loop_start()  # Start MQTT loop in background
   await asyncio.sleep(1)  # Keep coroutine alive to allow other tasks to run
   
-  # Function to run image stream
+# Function to run image stream
 async def run_image_stream():
     global current_mqtt_client
     if current_mqtt_client is None:

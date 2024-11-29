@@ -46,12 +46,11 @@ async def handle_connection(websocket, path):
         logger.error(f"Connection handler error: {e}")
 
 async def websocket_server():
-    # Sử dụng cấu hình server mạnh hơn
     server = await websockets.serve(
-        handle_connection, 
-        "0.0.0.0",  # Lắng nghe trên tất cả các giao diện
+        handle_connection,
+        "0.0.0.0",
         3001,
-        ping_interval=20,  # Thêm ping interval để giữ kết nối
+        ping_interval=20,
         ping_timeout=20,
         close_timeout=10
     )
@@ -61,8 +60,13 @@ async def websocket_server():
     # Giữ server luôn chạy
     await server.wait_closed()
 
-
-async def send_mqtt_data_to_clients(data):
-  if connected_clients:
-    message = json.dumps(data)
-    await asyncio.wait([client.send(message) for client in connected_clients])
+async def broadcast_to_websockets(data):
+    if connected_clients:
+        for client in connected_clients:
+            try:
+                await client.send(json.dumps(data))
+            except Exception as e:
+                logger.error(f"Failed to send data to a client: {e}")
+        logger.info(f"Broadcasted data to {len(connected_clients)} clients.")
+    else:
+        logger.info("No connected WebSocket clients to broadcast to.")
