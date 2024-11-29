@@ -20,17 +20,6 @@ async def handle_connection(websocket, *_):
     except Exception as e:
       print(f"An error occurred: {e}")
 
-async def broadcast(message):
-    if connected_clients:
-        await asyncio.gather(*[
-            client.send(message) for client in connected_clients
-            if not client.closed
-        ])
-        print("--------------------------------------------------------------------\n\n")
-        print("Data broadcasted to all connected clients.")
-        print("\n\n--------------------------------------------------------------------")
-    else:
-        print("No clients connected to broadcast.")
 
 async def websocket_server():
     print("Starting WebSocket server on ws://0.0.0.0:3001")

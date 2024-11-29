@@ -2,7 +2,7 @@ from PIL import Image
 from io import BytesIO
 import json
 from ultralytics import YOLO
-import websockets
+import math
 import time
 import cv2 as cv
 from app.websocket import broadcast
@@ -75,19 +75,27 @@ def get_image_stream(mqtt_client):
     except Exception as e:
       print("Error reading image:", e)
 
-async def websocket_broadcast(data):
-    message = json.dumps(data)
-    await broadcast(message)
 
 def TinhToan(x: float, y: float):
-  goc1 = 45 + x * 35.0
-  tmp = 40 + y * 50.0
-  goc2From = tmp - 20
-  goc2To = tmp + 20
-  return  {
-    "goc1": int(goc1),
-    "goc2From": int(goc2From),
-    "goc2To": int(goc2To)
-  }
+    tmp1 = math.atan(abs(x - 0.76) * 25.0 / 30.0)
+    alpha_degree = math.degrees(tmp1)
+    goc1 = 45
+    if x <= 0.76:
+      goc1 = 100 - alpha_degree - 20 * (0.76 - x) / 0.76
+    else:
+      goc1 = 100 + alpha_degree
+    print(goc1)
+    tmp2 = math.atan(abs(y - 1) * 25.0 / 30.0)
+    alpha_degree = math.degrees(tmp2)
+    goc2 = 90 - alpha_degree
+    # print(goc2)
+    goc2From = goc2 - 30
+    goc2To = goc2 + 30
+
+    return {
+        "goc1": int(goc1),
+        "goc2From": int(goc2From),
+        "goc2To": int(goc2To)
+    }
 
   # gui len mqtt voi topic la dieukhienbom {"goc1": goc1, "goc2From": 90, "goc2To": 90}
