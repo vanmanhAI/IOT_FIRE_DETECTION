@@ -23,22 +23,21 @@ async def run_flask():
 
 
 # MQTT client runner
-async def run_mqtt():
+async def run_mqtt(loop):
   global current_mqtt_client
-  current_mqtt_client = init_mqtt_client(asyncio.get_event_loop())
+  current_mqtt_client = init_mqtt_client(loop)
   current_mqtt_client.connect("06a3f96beed14b778927addb52b4de68.s1.eu.hivemq.cloud", 
                               8883, 60)
   current_mqtt_client.loop_start()  # Start MQTT loop in background
   await asyncio.sleep(1)  # Keep coroutine alive to allow other tasks to run
   
 # Function to run image stream
-async def run_image_stream():
+async def run_image_stream(loop):
   global current_mqtt_client
   if current_mqtt_client is None:
     print("MQTT client is not initialized.")
     return
   # Tạo một task riêng cho get_image_stream
-  loop = asyncio.get_event_loop()
   loop.run_in_executor(None, get_image_stream, current_mqtt_client)
 
 # Main function to run all components
@@ -48,8 +47,8 @@ async def main():
   await asyncio.gather(
     run_flask(),          # Flask server
     websocket_server(),   # WebSocket server
-    run_mqtt(),
-    run_image_stream()  # MQTT client
+    run_mqtt(loop),
+    run_image_stream(loop)  # MQTT client
   )
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ def get_image_stream_client():
       with open("image.jpg", "rb") as f:
         image_bytes = f.read()
       image = Image.open(BytesIO(image_bytes))
-
+  
       results = model.predict(image, show=False, imgsz=240)
       result = results[0]
 
