@@ -24,11 +24,14 @@ def init_mqtt_client():
       data = json.loads(msg.payload.decode('utf-8'))
 
       print("--------------------------------------------------------------------\n\n")
-      print(f"Received: {data['lua1']} {data['lua2']} {data['lua3']} {data['khoi']} \n\n")
+      print(f"Received: {data['lua1']} {data['lua2']} {data['lua3']} {data['khoi']}\n\n")
       print("--------------------------------------------------------------------")
+
+
             
       # Gửi dữ liệu đến WebSocket
-      asyncio.run(websocket_broadcast(data))
+      # asyncio.run(websocket_broadcast(data))
+      asyncio.create_task(websocket_broadcast(data))
     except Exception as e:
       print(f"MQTT message processing error: {e}")
 

@@ -26,7 +26,8 @@ async def run_flask():
 async def run_mqtt():
   global current_mqtt_client
   current_mqtt_client = init_mqtt_client()
-  current_mqtt_client.connect("06a3f96beed14b778927addb52b4de68.s1.eu.hivemq.cloud", 8883, 60)
+  current_mqtt_client.connect("06a3f96beed14b778927addb52b4de68.s1.eu.hivemq.cloud", 
+                              8883, 60)
   current_mqtt_client.loop_start()  # Start MQTT loop in background
   await asyncio.sleep(1)  # Keep coroutine alive to allow other tasks to run
   

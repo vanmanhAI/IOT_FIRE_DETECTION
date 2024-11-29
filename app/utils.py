@@ -3,11 +3,9 @@ from io import BytesIO
 import json
 from ultralytics import YOLO
 import websockets
-import math
-import asyncio
 import time
-import random
 import cv2 as cv
+from app.websocket import broadcast
 
 # Load a model
 model = YOLO("app/model/best.pt")
@@ -78,13 +76,8 @@ def get_image_stream(mqtt_client):
       print("Error reading image:", e)
 
 async def websocket_broadcast(data):
-  """Gửi dữ liệu tới WebSocket"""
-  try:
-    async with websockets.connect('ws://localhost:3001') as websocket:
-      await websocket.send(json.dumps(data).encode("utf-8"))
-      print("Data broadcasted to WebSocket clients.")
-  except Exception as e:
-    print(f"Failed to broadcast WebSocket message: {e}")
+    message = json.dumps(data)
+    await broadcast(message)
 
 def TinhToan(x: float, y: float):
   goc1 = 45 + x * 35.0
