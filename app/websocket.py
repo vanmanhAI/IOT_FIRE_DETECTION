@@ -1,68 +1,81 @@
 import asyncio
 import websockets
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 import json
-import logging
+# Tập hợp client kết nối cho ảnh
+connected_image_clients = set()
 
-# Cấu hình logging chi tiết
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# Tập hợp client kết nối cho dữ liệu real-time
+connected_data_clients = set()
 
-connected_clients = set()
-
-async def handle_connection(websocket, path):
-    try:
-        # Thêm client vào danh sách kết nối
-        connected_clients.add(websocket)
-        logger.info(f"Client connected: {websocket.remote_address}")
+# Hàm xử lý kết nối chung
+async def handle_connection(websocket):
+    print(f"path: {websocket.request.path}")
+    
+    if websocket.request.path == "/":
+        print(f"[Data Server] Client connected: {websocket.remote_address}")
+        connected_data_clients.add(websocket)
         try:
             async for message in websocket:
                 try:
-                    # Thử parse JSON đầu tiên
-                    try:
-                        data = json.loads(message)
-                        logger.info(f"Received JSON: {data}")
-                        await websocket.send(json.dumps({"status": "JSON received"}))
-                    except json.JSONDecodeError:
-                        # Nếu không phải JSON, thử xử lý như ảnh
-                        image = Image.open(BytesIO(message))
-                        image.save("images/image.jpg")
-                        logger.info("Received and saved image")
-                        await websocket.send(json.dumps({"status": "Image received"}))
-                
+                    data = json.loads(message)
+                    print(f"[Data Server] Received data: {data}")
+                except json.JSONDecodeError as e:
+                    print(f"[Data Server] Failed to decode JSON: {e}")
                 except Exception as e:
-                    logger.error(f"Error processing message: {e}")
-                    await websocket.send(json.dumps({"error": str(e)}))
-        
-        except websockets.exceptions.ConnectionClosed:
-            logger.info("WebSocket connection closed by client")
-        
+                    print(f"[Data Server] An error occurred: {e}")
+        except websockets.exceptions.ConnectionClosed as e:
+            print(f"[Data Server] Connection closed: {e}")
         finally:
-            # Loại bỏ client khỏi danh sách kết nối
-            connected_clients.discard(websocket)
-    
+            connected_data_clients.remove(websocket)
+            print(f"[Data Server] Client disconnected: {websocket.remote_address}")
+    else:
+        print(f"[Image Server] Client connected: {websocket.remote_address}")
+        connected_image_clients.add(websocket)
+        try:
+            async for message in websocket:
+                try:
+                    image = Image.open(BytesIO(message))
+                    image.save("image.jpg")
+                    print(f"[Image Server] Received and saved image, size: {len(message)} bytes")
+                    await websocket.send("Image received successfully")
+                except UnidentifiedImageError as e:
+                    print(f"[Image Server] Failed to decode image: {e}")
+                    await websocket.send("Failed to decode image.")
+                except Exception as e:
+                    print(f"[Image Server] An error occurred: {e}")
+                    await websocket.send("An error occurred while processing the image.")
+        except websockets.exceptions.ConnectionClosed as e:
+            print(f"[Image Server] Connection closed: {e}")
+        finally:
+            connected_image_clients.remove(websocket)
+            print(f"[Image Server] Client disconnected: {websocket.remote_address}")
+
+
+async def broadcast(message):
+    if connected_data_clients:
+        print(f"TESTTTTTT - Số lượng client: {len(connected_data_clients)}")
+        for client in connected_data_clients:
+          print(f"Client type: {type(client)}")
+          tasks = []
+          for client in connected_data_clients:
+            tasks.append(send_message_to_client(client, message))
+          await asyncio.gather(*tasks)
+          print("--------------------------------------------------------------------\n\n")
+          print("Data broadcasted to all connected clients.")
+          print("\n\n--------------------------------------------------------------------")
+        
+    else:
+        print("No clients connected to broadcast.")
+
+async def send_message_to_client(client, message):
+    try:
+        await client.send(message)
     except Exception as e:
-        logger.error(f"Connection handler error: {e}")
+        print(f"Error sending message to client {client.remote_address}: {e}")
 
 async def websocket_server():
-    # Sử dụng cấu hình server mạnh hơn
-    server = await websockets.serve(
-        handle_connection, 
-        "0.0.0.0",  # Lắng nghe trên tất cả các giao diện
-        3001,
-        ping_interval=20,  # Thêm ping interval để giữ kết nối
-        ping_timeout=20,
-        close_timeout=10
-    )
-    
-    logger.info("WebSocket server started on ws://0.0.0.0:3001")
-    
-    # Giữ server luôn chạy
-    await server.wait_closed()
-
-
-async def send_mqtt_data_to_clients(data):
-  if connected_clients:
-    message = json.dumps(data)
-    await asyncio.wait([client.send(message) for client in connected_clients])
+    print("Starting WebSocket server on ws://0.0.0.0:3001")
+    async with websockets.serve(handle_connection, '0.0.0.0', 3001):
+        await asyncio.Future()  # Keeps the server running
