@@ -5,7 +5,7 @@ from ultralytics import YOLO
 import math
 import time
 import cv2 as cv
-from app.utils import save_history_fire_data
+from app.database import save_history_fire_data
 
 # Load a model
 model = YOLO("app/model/best.pt")
