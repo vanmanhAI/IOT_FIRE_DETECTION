@@ -1,6 +1,6 @@
 import paho.mqtt.client as mqtt
 import json
-from app.utils import get_image_stream
+from app.database import get_image_stream
 
 PUMP_TOPIC = "dieukhienbom"
 GENERAL_TOPIC = "cambien/duLieu"
