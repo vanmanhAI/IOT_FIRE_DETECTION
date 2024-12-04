@@ -1,7 +1,6 @@
 import paho.mqtt.client as mqtt
 import json
-import asyncio
-from app.utils import websocket_broadcast
+from app.utils import get_image_stream
 
 PUMP_TOPIC = "dieukhienbom"
 GENERAL_TOPIC = "cambien/duLieu"
@@ -26,8 +25,9 @@ def init_mqtt_client(loop):
             print(f"Received: {data['lua1']} {data['lua2']} {data['lua3']} {data['khoi']}\n")
             print("--------------------------------------------------------------------")
 
+            get_image_stream(client, data)
+            
             # Gửi dữ liệu đến WebSocket
-            asyncio.run_coroutine_threadsafe(websocket_broadcast(data), loop)
         except Exception as e:
             print(f"MQTT message processing error: {e}")
 

@@ -24,22 +24,6 @@ async def handle_connection(websocket, *_):
         connected_clients.remove(websocket)  # Xóa client khi ngắt kết nối
         print(f"Client disconnected: {websocket.remote_address}")
 
-async def broadcast(message):
-    if connected_clients:
-        print(f"TESTTTTTT - Số lượng client: {len(connected_clients)}")
-        for client in connected_clients:
-          print(f"Client type: {type(client)}")
-          tasks = []
-          for client in connected_clients:
-            tasks.append(send_message_to_client(client, message))
-          await asyncio.gather(*tasks)
-          print("--------------------------------------------------------------------\n\n")
-          print("Data broadcasted to all connected clients.")
-          print("\n\n--------------------------------------------------------------------")
-        
-    else:
-        print("No clients connected to broadcast.")
-
 async def send_message_to_client(client, message):
     try:
         await client.send(message)
