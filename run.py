@@ -2,12 +2,8 @@ import asyncio
 from flask import Flask, jsonify, request
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
-import websockets
-from io import BytesIO
-from PIL import Image, UnidentifiedImageError
 from app.mqtt import init_mqtt_client  # Import MQTT client từ mqtt.py
 from app.routes import main_bp
-from app.utils import get_image_stream
 from app.websocket import websocket_server
 
 # Flask app setup

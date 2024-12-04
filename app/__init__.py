@@ -1,4 +1,7 @@
 from flask import Flask
+import asyncio
+from threading import Thread
+from app.websocket import start_websocket
 
 def create_app():
   app = Flask(__name__)
@@ -10,4 +13,11 @@ def create_app():
   from app.routes import main_bp
   app.register_blueprint(main_bp)
 
+  # Chạy WebSocket server trong một thread riêng
+  def run_websocket():
+      asyncio.run(start_websocket())
+
+  websocket_thread = Thread(target=run_websocket, daemon=True)
+  websocket_thread.start()
+    
   return app
