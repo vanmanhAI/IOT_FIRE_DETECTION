@@ -113,28 +113,52 @@ def get_image_stream(mqtt_client, data):
     except Exception as e:
       print("Error reading image:", e)
 
-def TinhToan(x: float, y: float):
-    tmp1 = math.atan(abs(x - 0.76) * 25.0 / 30.0)
-    alpha_degree = math.degrees(tmp1)
-    goc1 = 45
-    if x <= 0.76:
-      goc1 = 100 - alpha_degree - 20 * (0.76 - x) / 0.76
+def TinhToan(x: float, y: float):  # x, y là tọa độ đã chuẩn hóa
+    # const
+    hCamera = 30   # chiều cao của camera so với mặt đất - cm
+    d = 23.0       # chiều dài của góc nhìn của camera - cm
+    r = 18.0       # chiều rộng của góc nhìn của camera - cm
+    hServo = 28    # chiều cao của servo2 so với mặt đất - cm
+    y1 = 1         # hình chiếu của servo2 xuống mặt đất - đã chuẩn hóa
+    hNen = 6       # chiều cao cây nến muốn đạt được
+
+    # góc 1 - góc quay của servo 1
+    angle1 = 90  # angle1 là góc quay của servo1
+    # mặc định là ban đầu 90 độ
+    # thẳng đứng so với mặt đất
+    alpha_radian = math.atan(abs(0.5 - x) * r / hCamera)  # góc theo radian
+    alpha_degree = math.degrees(alpha_radian)             # góc theo độ
+
+    # nếu hình chiếu của x lên mặt phẳng mà quá 0.5 thì góc > 90 độ
+    if x < 0.5:
+        angle1 += alpha_degree
     else:
-      goc1 = 100 + alpha_degree
-    print(goc1)
-    tmp2 = math.atan(abs(y - 1) * 25.0 / 30.0)
-    alpha_degree = math.degrees(tmp2)
-    goc2 = 90 - alpha_degree
-    # print(goc2)
-    goc2From = goc2 - 30
-    goc2To = goc2 + 30
+        angle1 -= alpha_degree
+
+    # góc 2 - góc quay của servo 2
+    angle2 = 90
+    # khoảng cách thực tế từ điểm cháy đến chân hình chiếu
+    deltaY = (y1 - y) * d
+    ch = math.sqrt(hServo ** 2 + deltaY ** 2)  # cạnh huyền của tam giác
+    # góc quay alpha là góc quay với lửa ở vị trí đó, cao = 0cm
+    alpha_radian = math.atan(deltaY / hServo)
+    alpha_degree = math.degrees(alpha_radian)
+    c = math.sqrt(hNen ** 2 + ch ** 2 - 2 * hNen * hServo)
+    # góc quay beta là góc quay với lửa ở độ cao hNen
+    beta_radian = math.acos((ch ** 2 + c ** 2 - hNen ** 2)/(2 * ch * c))
+    beta_degree = math.degrees(beta_radian)
+
+    # góc nhỏ hơn là góc 90 - alpha - beta
+    angle2From = angle2 - alpha_degree - beta_degree
+
+    # góc lớn hơn là góc 90 - alpha
+    angle2To = angle2 - alpha_degree
 
     return {
-        "goc1": int(goc1),
-        "goc2From": int(goc2From),
-        "goc2To": int(goc2To)
+      "goc1": int(angle1),
+      "goc2From": int(angle2From),
+      "goc2To": int(angle2To)
     }
-    
 def classify_fire_level(fire_percentage):
     if fire_percentage < 30:
         return "safe"
