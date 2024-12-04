@@ -7,6 +7,9 @@ collection = db['fireNotifications']
 historyFireCollection = db['historyFire']   # Lịch sử các vụ cháy 
 logCollection = db['logs']  # Lịch sử các hoạt động của hệ thống
 
+# Tạo chỉ mục trên trường 'date' để sắp xếp nhanh
+historyFireCollection.create_index([("date", DESCENDING)])
+
 def save_data(smoke, fire, light, image):
     data = {
         'smoke': smoke,
@@ -30,6 +33,15 @@ def save_history_fire_data(lua1, lua2, lua3, khoi, chay, detect):
         'date': datetime.now()
     }
     historyFireCollection.insert_one(data)
+    
+    # Kiểm tra số lượng bản ghi
+    count = historyFireCollection.count_documents({})
+    if count > 100:
+        # Tìm các bản ghi cũ nhất cần xóa
+        old_docs = historyFireCollection.find().sort("date", ASCENDING).limit(count - 100)
+        old_ids = [doc['_id'] for doc in old_docs]
+        if old_ids:
+            historyFireCollection.delete_many({'_id': {'$in': old_ids}})
 
 def save_log(oldState, newState):
     data = {

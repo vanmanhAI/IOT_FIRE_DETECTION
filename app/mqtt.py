@@ -1,6 +1,6 @@
 import paho.mqtt.client as mqtt
 import json
-from app.database import get_image_stream
+from app.database import get_image_stream, save_history_fire_data
 import asyncio
 from app.websocket import data_queue
 
@@ -34,6 +34,10 @@ def init_mqtt_client(loop):
                 'khoi': data['khoi']
             }), loop)
             
+            # Lưu dữ liệu vào historyFireCollection
+            save_history_fire_data(data['lua1'], data['lua2'], data['lua3'], data['khoi'], data['chay'], data['detect'])
+            
+            # Lưu dữ liệu vào collection
             get_image_stream(client, data)
             
             # Gửi dữ liệu đến WebSocket

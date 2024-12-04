@@ -5,11 +5,12 @@ from ultralytics import YOLO
 import math
 import time
 import cv2 as cv
-from app.database import save_history_fire_data
+from app.database import save_history_fire_data, save_log
 
 # Load a model
 model = YOLO("app/model/best.pt")
-# LUA1, LUA2, LUA3, KHOI, %CHAY, %DETECT
+# Thêm biến toàn cục để lưu trạng thái fire_level trước đó
+previous_fire_level = None
 
 def get_image_stream_client():
   while True:
@@ -66,6 +67,12 @@ def get_image_stream(mqtt_client, data):
         fire_percentage = (flame_average * w_flame + normalized_khoi * w_khoi) * 100  # Chuyển sang phần trăm
         # save to DB
         save_history_fire_data(lua1, lua2, lua3, khoi, fire_percentage, 0)
+        
+        fire_level = classify_fire_level(fire_percentage)
+        # So sánh với trạng thái trước đó
+        if previous_fire_level != fire_level:
+            save_log(previous_fire_level, fire_level)
+            previous_fire_level = fire_level  # Cập nhật trạng thái mới
       else:
         # Phát hiện lửa
         confidence_scores = result.boxes.conf.tolist()
@@ -83,6 +90,12 @@ def get_image_stream(mqtt_client, data):
         
         # SAVE TO DB
         save_history_fire_data(lua1, lua2, lua3, khoi, fire_percentage, confidence)
+        
+        fire_level = classify_fire_level(fire_percentage)
+# So sánh với trạng thái trước đó
+        if previous_fire_level != fire_level:
+            save_log(previous_fire_level, fire_level)
+            previous_fire_level = fire_level  # Cập nhật trạng thái mới
         
         if fire_detected_start_time is None:
           fire_detected_start_time = time.time()
