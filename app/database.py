@@ -39,10 +39,8 @@ def save_log(oldState, newState):
         'date': datetime.now()
     }
     logCollection.insert_one(data)
-    
-# test save_data
-save_data(0, 1, 100, "image.jpg")
+
 # test save_history_fire_data
-save_history_fire_data(100, 200, 300, 400, 50, 100)
+# save_history_fire_data(100, 200, 300, 400, 50, 100)
 # test save_log
-save_log("safe", "safe")
+# save_log("safe", "safe")

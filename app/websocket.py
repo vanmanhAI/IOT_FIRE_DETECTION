@@ -12,11 +12,7 @@ async def handle_connection(websocket, *_):
   connected_clients.add(websocket)  # Thêm client vào danh sách
   async for message in websocket:
     try:
-      image = Image.open(BytesIO(message))
-      image.save("image.jpg")
-      print(f"Received and saved image, size: {len(message)} bytes")
-
-      await websocket.send("Image received successfully")
+      print(f"Received message: {message}")
       
     except UnidentifiedImageError as e:
       print(f"Failed to decode image: {e}")
@@ -43,6 +39,6 @@ async def send_data():
 async def websocket_server():
     print("Starting WebSocket server on ws://0.0.0.0:3001")
     server = await websockets.serve(handle_connection, '0.0.0.0', 3001)
-    sender = asyncio.create_task(send_data())
+    # sender = asyncio.create_task(send_data())
     await server.wait_closed()
-    await sender
+    # await sender

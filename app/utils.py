@@ -6,125 +6,313 @@ import math
 import time
 import cv2 as cv
 from app.database import save_history_fire_data, save_log
+from app.websocket import send_data
 
 # Load a model
 model = YOLO("app/model/best.pt")
 # Thêm biến toàn cục để lưu trạng thái fire_level trước đó
 previous_fire_level = None
 
+import cv2
+from io import BytesIO
+from PIL import Image
+
 def get_image_stream_client():
-  while True:
     try:
-      with open("image.jpg", "rb") as f:
-        image_bytes = f.read()
-      image = Image.open(BytesIO(image_bytes))
-  
-      results = model.predict(image, show=False, imgsz=240)
-      result = results[0]
+        # Kết nối tới luồng video
+        cap = cv2.VideoCapture("http://192.168.1.18/stream")  # Đường dẫn tới luồng video
+        if not cap.isOpened():
+            raise ConnectionError("Unable to connect to video stream.")
 
-      img = result.plot()
-      imageRGB = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-      image = Image.fromarray(imageRGB)
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print("Failed to read frame from video stream.")
+                break
 
-      img_io = BytesIO()
-      image.save(img_io, 'JPEG')
-      img_io.seek(0)
-      yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + img_io.read() + b'\r\n')
+            # Chuyển khung hình từ BGR sang RGB (nếu mô hình yêu cầu RGB)
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Chạy inference với mô hình AI
+            results = model(frame_rgb)  # model xử lý khung hình và trả về kết quả
+
+            # Kiểm tra nếu kết quả trả về là danh sách
+            if isinstance(results, list):
+                # Nếu mô hình trả về danh sách bounding boxes
+                for result in results:
+                    if 'boxes' in result:
+                        for box in result['boxes']:
+                            x1, y1, x2, y2 = map(int, box[:4])
+                            label = box[4] if len(box) > 4 else "Fire"
+                            confidence = box[5] if len(box) > 5 else 0.0
+                            # Vẽ bounding box lên khung hình
+                            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                            cv2.putText(
+                                frame,
+                                f"{label} {confidence:.2f}",
+                                (x1, y1 - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.5,
+                                (0, 255, 0),
+                                2,
+                            )
+
+            # Chuyển khung hình sang định dạng JPEG
+            _, jpeg = cv2.imencode('.jpg', frame)
+
+            # Truyền khung hình qua HTTP streaming
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
+    except ConnectionError as e:
+        print(f"ConnectionError: {e}")
+        yield b'--frame\r\nContent-Type: text/plain\r\n\r\nError: Unable to connect to stream\r\n'
     except Exception as e:
-      print("Error reading image:", e)
-      yield b''
+        print(f"Unexpected error: {e}")
+        yield b'--frame\r\nContent-Type: text/plain\r\n\r\nError: Unable to process stream\r\n'
+    finally:
+        if 'cap' in locals():
+            cap.release()
 
 def get_image_stream(mqtt_client, data):
-  fire_detected_start_time = None
-  
-  w_flame = 0.5
-  w_khoi = 0.1
-  w_ai = 0.4
-  
-  lua1 = data['lua1']
-  lua2 = data['lua2']
-  lua3 = data['lua3']
-  khoi = data['khoi']
-  flame_average = (lua1 + lua2 + lua3) / 3
-  
-  normalized_khoi = (khoi - 200) / (10000 - 200)
-  normalized_khoi = max(0, min(normalized_khoi, 1))  # Đảm bảo giá trị trong khoảng [0,1]
-  
-  while True:
-    try:
-      with open("image.jpg", "rb") as f:
-        image_bytes = f.read()
-      image = Image.open(BytesIO(image_bytes))
+    global previous_fire_level  # Use the global variable
 
-      results = model.predict(image, show=False, imgsz=240)
-      result = results[0]
-      
-      print(results)      
+    fire_detected_start_time = None
 
-      if result.boxes is None or len(result.boxes) == 0:
-        print("No objects detected.")
-        fire_detected_start_time = None
-        fire_percentage = (flame_average * w_flame + normalized_khoi * w_khoi) * 100  # Chuyển sang phần trăm
-        # save to DB
-        save_history_fire_data(lua1, lua2, lua3, khoi, fire_percentage, 0)
-        
-        fire_level = classify_fire_level(fire_percentage)
-        # So sánh với trạng thái trước đó
-        if previous_fire_level != fire_level:
-            save_log(previous_fire_level, fire_level)
-            previous_fire_level = fire_level  # Cập nhật trạng thái mới
-      else:
-        # Phát hiện lửa
-        confidence_scores = result.boxes.conf.tolist()
-        print(f"Confidence scores: {confidence_scores}")
-        
-        confidence = confidence_scores[0] * 100  # Chuyển đổi sang phần trăm
-        print(f"Fire detection confidence: {confidence:.2f}%")
-        normalized_confidence = confidence / 100
-        
-        fire_percentage = (
-          flame_average * w_flame +
-          normalized_khoi * w_khoi +
-          normalized_confidence * w_ai
-        ) * 100  # Chuyển sang phần trăm
-        
-        # SAVE TO DB
-        save_history_fire_data(lua1, lua2, lua3, khoi, fire_percentage, confidence)
-        
-        fire_level = classify_fire_level(fire_percentage)
-# So sánh với trạng thái trước đó
-        if previous_fire_level != fire_level:
-            save_log(previous_fire_level, fire_level)
-            previous_fire_level = fire_level  # Cập nhật trạng thái mới
-        
-        if fire_detected_start_time is None:
-          fire_detected_start_time = time.time()
-          print("Fire detected, starting timer...")
-        else:
-          
-          # Tính thời gian đã phát hiện lửa
-          elapsed_time = time.time() - fire_detected_start_time
-          print(f"Fire detected for {elapsed_time:.2f} seconds")
-          if elapsed_time >= 5:
-            xywh = result.boxes.xywh[0].tolist()
-            x_center = xywh[0] / result.orig_shape[1]
-            y_center = xywh[1] / result.orig_shape[0]
+    w_flame = 0.5
+    w_khoi = 0.1
+    w_ai = 0.4
 
-            print(f"Fire detected at ({x_center:.2f}, {y_center:.2f})")
+    lua1 = data['lua1']
+    lua2 = data['lua2']
+    lua3 = data['lua3']
+    khoi = data['khoi']
+    flame_average = (lua1 + lua2 + lua3) / 3
 
-            data = TinhToan(x_center, y_center)
+    send_data(data)
 
-            if mqtt_client.is_connected():
-              print("Sending data to MQTT...")
-              mqtt_client.publish("dieukhienbom", json.dumps(data))
-              
-              # Reset thời gian sau khi gửi
-              fire_detected_start_time = None
+    normalized_khoi = (khoi - 200) / (10000 - 200)
+    normalized_khoi = max(0, min(normalized_khoi, 1))  # Ensure value is between [0,1]
+
+    # Connect to video stream
+    cap = cv2.VideoCapture("http://192.168.1.18/stream")
+    if not cap.isOpened():
+        print("Unable to connect to video stream.")
+        return
+
+    while True:
+        try:
+            ret, frame = cap.read()
+            if not ret:
+                print("Failed to read frame from video stream.")
+                break
+
+            # Convert frame from BGR to RGB
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Convert frame to PIL Image
+            image = Image.fromarray(frame_rgb)
+
+            # Run inference with the AI model
+            results = model.predict(image, show=False, imgsz=240)
+            result = results[0]
+
+            print(results)
+
+            if result.boxes is None or len(result.boxes) == 0:
+                print("No objects detected.")
+                fire_detected_start_time = None
+                fire_percentage = (flame_average * w_flame + normalized_khoi * w_khoi) * 100  # Convert to percentage
+                # Save to DB
+                save_history_fire_data(lua1, lua2, lua3, khoi, fire_percentage, 0)
+
+                fire_level = classify_fire_level(fire_percentage)
+                # Compare with previous state
+                if previous_fire_level != fire_level:
+                    save_log(previous_fire_level, fire_level)
+                    previous_fire_level = fire_level  # Update to new state
             else:
-              print("MQTT client not connected.")
+                # Fire detected
+                confidence_scores = result.boxes.conf.tolist()
+                print(f"Confidence scores: {confidence_scores}")
 
-    except Exception as e:
-      print("Error reading image:", e)
+                # Use the highest confidence score
+                confidence = max(confidence_scores) * 100  # Convert to percentage
+                print(f"Fire detection confidence: {confidence:.2f}%")
+                normalized_confidence = confidence / 100
+
+                fire_percentage = (
+                    flame_average * w_flame +
+                    normalized_khoi * w_khoi +
+                    normalized_confidence * w_ai
+                ) * 100  # Convert to percentage
+
+                # Save to DB
+                save_history_fire_data(lua1, lua2, lua3, khoi, fire_percentage, confidence)
+
+                fire_level = classify_fire_level(fire_percentage)
+                # Compare with previous state
+                if previous_fire_level != fire_level:
+                    save_log(previous_fire_level, fire_level)
+                    previous_fire_level = fire_level  # Update to new state
+
+                if fire_detected_start_time is None:
+                    fire_detected_start_time = time.time()
+                    print("Fire detected, starting timer...")
+                else:
+                    # Calculate elapsed time since fire was detected
+                    elapsed_time = time.time() - fire_detected_start_time
+                    print(f"Fire detected for {elapsed_time:.2f} seconds")
+                    if elapsed_time >= 5:
+                        xywh = result.boxes.xywh[0].tolist()
+                        x_center = xywh[0] / result.orig_shape[1]
+                        y_center = xywh[1] / result.orig_shape[0]
+
+                        print(f"Fire detected at ({x_center:.2f}, {y_center:.2f})")
+
+                        data_to_send = TinhToan(x_center, y_center)
+
+                        if mqtt_client.is_connected():
+                            print("Sending data to MQTT...")
+                            mqtt_client.publish("dieukhienbom", json.dumps(data_to_send))
+
+                            # Reset timer after sending data
+                            fire_detected_start_time = None
+                        else:
+                            print("MQTT client not connected.")
+
+        except Exception as e:
+            print("Error processing frame:", e)
+            continue  # Continue processing the next frame
+
+    cap.release()
+
+# def get_image_stream_client():
+#   try:
+#     results = model("http://192.168.1.18/stream", stream=False, show=False)
+#     for r in results:
+#       frame = r.render()[0]
+#       yield (b'--frame\r\n'
+#               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+#   except ConnectionError as e:
+#     print(f"ConnectionError: {e}")
+#     yield b'--frame\r\nContent-Type: text/plain\r\n\r\nError: Unable to connect to stream\r\n'
+  # while True:
+  #   try:
+  #     with open("image.jpg", "rb") as f:
+  #       image_bytes = f.read()
+  #     image = Image.open(BytesIO(image_bytes))
+  
+  #     results = model.predict(image, show=False, imgsz=240)
+  #     result = results[0]
+
+  #     img = result.plot()
+  #     imageRGB = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+  #     image = Image.fromarray(imageRGB)
+
+  #     img_io = BytesIO()
+  #     image.save(img_io, 'JPEG')
+  #     img_io.seek(0)
+  #     yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + img_io.read() + b'\r\n')
+  #   except Exception as e:
+  #     print("Error reading image:", e)
+  #     yield b''
+
+# def get_image_stream(mqtt_client, data):
+#   fire_detected_start_time = None
+  
+#   w_flame = 0.5
+#   w_khoi = 0.1
+#   w_ai = 0.4
+  
+#   lua1 = data['lua1']
+#   lua2 = data['lua2']
+#   lua3 = data['lua3']
+#   khoi = data['khoi']
+#   flame_average = (lua1 + lua2 + lua3) / 3
+
+#   send_data(data)
+  
+#   normalized_khoi = (khoi - 200) / (10000 - 200)
+#   normalized_khoi = max(0, min(normalized_khoi, 1))  # Đảm bảo giá trị trong khoảng [0,1]
+  
+#   while True:
+#     try:
+#       with open("image.jpg", "rb") as f:
+#         image_bytes = f.read()
+#       image = Image.open(BytesIO(image_bytes))
+
+#       results = model.predict(image, show=False, imgsz=240)
+#       result = results[0]
+      
+#       print(results)      
+
+#       if result.boxes is None or len(result.boxes) == 0:
+#         print("No objects detected.")
+#         fire_detected_start_time = None
+#         fire_percentage = (flame_average * w_flame + normalized_khoi * w_khoi) * 100  # Chuyển sang phần trăm
+#         # save to DB
+#         save_history_fire_data(lua1, lua2, lua3, khoi, fire_percentage, 0)
+        
+#         fire_level = classify_fire_level(fire_percentage)
+#         # So sánh với trạng thái trước đó
+#         if previous_fire_level != fire_level:
+#             save_log(previous_fire_level, fire_level)
+#             previous_fire_level = fire_level  # Cập nhật trạng thái mới
+#       else:
+#         # Phát hiện lửa
+#         confidence_scores = result.boxes.conf.tolist()
+#         print(f"Confidence scores: {confidence_scores}")
+        
+#         confidence = confidence_scores[0] * 100  # Chuyển đổi sang phần trăm
+#         print(f"Fire detection confidence: {confidence:.2f}%")
+#         normalized_confidence = confidence / 100
+        
+#         fire_percentage = (
+#           flame_average * w_flame +
+#           normalized_khoi * w_khoi +
+#           normalized_confidence * w_ai
+#         ) * 100  # Chuyển sang phần trăm
+        
+#         # SAVE TO DB
+#         save_history_fire_data(lua1, lua2, lua3, khoi, fire_percentage, confidence)
+        
+#         fire_level = classify_fire_level(fire_percentage)
+# # So sánh với trạng thái trước đó
+#         if previous_fire_level != fire_level:
+#             save_log(previous_fire_level, fire_level)
+#             previous_fire_level = fire_level  # Cập nhật trạng thái mới
+        
+#         if fire_detected_start_time is None:
+#           fire_detected_start_time = time.time()
+#           print("Fire detected, starting timer...")
+#         else:
+          
+#           # Tính thời gian đã phát hiện lửa
+#           elapsed_time = time.time() - fire_detected_start_time
+#           print(f"Fire detected for {elapsed_time:.2f} seconds")
+#           if elapsed_time >= 5:
+#             xywh = result.boxes.xywh[0].tolist()
+#             x_center = xywh[0] / result.orig_shape[1]
+#             y_center = xywh[1] / result.orig_shape[0]
+
+#             print(f"Fire detected at ({x_center:.2f}, {y_center:.2f})")
+
+#             data = TinhToan(x_center, y_center)
+
+#             if mqtt_client.is_connected():
+#               print("Sending data to MQTT...")
+#               mqtt_client.publish("dieukhienbom", json.dumps(data))
+              
+#               # Reset thời gian sau khi gửi
+#               fire_detected_start_time = None
+#             else:
+#               print("MQTT client not connected.")
+
+#     except Exception as e:
+#       print("Error reading image:", e)
+
+
+
 
 def TinhToan(x: float, y: float):  # x, y là tọa độ đã chuẩn hóa
     # const

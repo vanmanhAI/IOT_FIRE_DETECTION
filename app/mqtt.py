@@ -1,9 +1,9 @@
 import paho.mqtt.client as mqtt
 import json
-from app.database import get_image_stream, save_history_fire_data
+from app.database import save_history_fire_data
 import asyncio
 from app.websocket import data_queue
-
+from app.utils import get_image_stream
 PUMP_TOPIC = "dieukhienbom"
 GENERAL_TOPIC = "cambien/duLieu"
 
@@ -27,12 +27,12 @@ def init_mqtt_client(loop):
             print(f"Received: {data['lua1']} {data['lua2']} {data['lua3']} {data['khoi']}\n")
             print("--------------------------------------------------------------------")
             # Gửi dữ liệu đến WebSocket
-            asyncio.run_coroutine_threadsafe(data_queue.put({
-                'lua1': data['lua1'],
-                'lua2': data['lua2'],
-                'lua3': data['lua3'],
-                'khoi': data['khoi']
-            }), loop)
+            # asyncio.run_coroutine_threadsafe(data_queue.put({
+            #     'lua1': data['lua1'],
+            #     'lua2': data['lua2'],
+            #     'lua3': data['lua3'],
+            #     'khoi': data['khoi']
+            # }), loop)
             
             # Lưu dữ liệu vào historyFireCollection
             save_history_fire_data(data['lua1'], data['lua2'], data['lua3'], data['khoi'], data['chay'], data['detect'])
