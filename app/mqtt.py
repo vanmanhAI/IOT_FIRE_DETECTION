@@ -35,7 +35,7 @@ def init_mqtt_client(loop):
             # }), loop)
             
             # Lưu dữ liệu vào historyFireCollection
-            save_history_fire_data(data['lua1'], data['lua2'], data['lua3'], data['khoi'], data['chay'], data['detect'])
+            # save_history_fire_data(data['lua1'], data[n1'lua2'], data['lua3'], data['khoi'], data['chay'], data['detect'])
             
             # Lưu dữ liệu vào collection
             get_image_stream(client, data)
