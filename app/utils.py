@@ -16,65 +16,21 @@ previous_fire_level = None
 import cv2
 from io import BytesIO
 from PIL import Image
-
 def get_image_stream_client():
-    try:
-        # Kết nối tới luồng video
-        cap = cv2.VideoCapture("http://192.168.1.18/stream")  # Đường dẫn tới luồng video
-        if not cap.isOpened():
-            raise ConnectionError("Unable to connect to video stream.")
-
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("Failed to read frame from video stream.")
-                break
-
-            # Chuyển khung hình từ BGR sang RGB (nếu mô hình yêu cầu RGB)
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            # Chạy inference với mô hình AI
-            results = model(frame_rgb)  # model xử lý khung hình và trả về kết quả
-
-            # Kiểm tra nếu kết quả trả về là danh sách
-            if isinstance(results, list):
-                # Nếu mô hình trả về danh sách bounding boxes
-                for result in results:
-                    if 'boxes' in result:
-                        for box in result['boxes']:
-                            x1, y1, x2, y2 = map(int, box[:4])
-                            label = box[4] if len(box) > 4 else "Fire"
-                            confidence = box[5] if len(box) > 5 else 0.0
-                            # Vẽ bounding box lên khung hình
-                            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                            cv2.putText(
-                                frame,
-                                f"{label} {confidence:.2f}",
-                                (x1, y1 - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                0.5,
-                                (0, 255, 0),
-                                2,
-                            )
-
-            # Chuyển khung hình sang định dạng JPEG
-            _, jpeg = cv2.imencode('.jpg', frame)
-
-            # Truyền khung hình qua HTTP streaming
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
-    except ConnectionError as e:
-        print(f"ConnectionError: {e}")
-        yield b'--frame\r\nContent-Type: text/plain\r\n\r\nError: Unable to connect to stream\r\n'
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        yield b'--frame\r\nContent-Type: text/plain\r\n\r\nError: Unable to process stream\r\n'
-    finally:
-        if 'cap' in locals():
-            cap.release()
+    results = model("http://192.168.1.18/stream", stream=True)
+    for result in results:
+        # Get the frame with detections plotted
+        frame = result.plot()
+        
+        # Encode frame as JPEG
+        _, jpeg = cv2.imencode('.jpg', frame)
+        
+        # Yield frame in byte format
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
 
 def get_image_stream(mqtt_client, data):
-    global previous_fire_level  # Use the global variable
+    global previous_fire_level  # Ensure this is declared globally
 
     fire_detected_start_time = None
 
@@ -93,35 +49,14 @@ def get_image_stream(mqtt_client, data):
     normalized_khoi = (khoi - 200) / (10000 - 200)
     normalized_khoi = max(0, min(normalized_khoi, 1))  # Ensure value is between [0,1]
 
-    # Connect to video stream
-    cap = cv2.VideoCapture("http://192.168.1.18/stream")
-    if not cap.isOpened():
-        print("Unable to connect to video stream.")
-        return
-
-    while True:
+    results = model("http://192.168.1.18/stream", stream=True)
+    for result in results:
         try:
-            ret, frame = cap.read()
-            if not ret:
-                print("Failed to read frame from video stream.")
-                break
-
-            # Convert frame from BGR to RGB
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            # Convert frame to PIL Image
-            image = Image.fromarray(frame_rgb)
-
-            # Run inference with the AI model
-            results = model.predict(image, show=False, imgsz=240)
-            result = results[0]
-
-            print(results)
-
+            # Process detection results
             if result.boxes is None or len(result.boxes) == 0:
                 print("No objects detected.")
                 fire_detected_start_time = None
-                fire_percentage = (flame_average * w_flame + normalized_khoi * w_khoi) * 100  # Convert to percentage
+                fire_percentage = (flame_average * w_flame + normalized_khoi * w_khoi) * 100
                 # Save to DB
                 save_history_fire_data(lua1, lua2, lua3, khoi, fire_percentage, 0)
 
@@ -179,13 +114,10 @@ def get_image_stream(mqtt_client, data):
                             fire_detected_start_time = None
                         else:
                             print("MQTT client not connected.")
-
         except Exception as e:
             print("Error processing frame:", e)
             continue  # Continue processing the next frame
-
-    cap.release()
-
+        
 # def get_image_stream_client():
 #   try:
 #     results = model("http://192.168.1.18/stream", stream=False, show=False)
