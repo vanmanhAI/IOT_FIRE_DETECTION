@@ -73,56 +73,56 @@ def get_image_stream(mqtt_client, data):
                 print("--------------------------------------------------------------------\n")
                 print(f"Fire detected at ({x_center:.2f}, {y_center:.2f})\n\n")
                 print("--------------------------------------------------------------------\n")
-                # # Fire detected
-                # confidence_scores = result.boxes.conf.tolist()
-                # print(f"Confidence scores: {confidence_scores}")
+                # Fire detected
+                confidence_scores = result.boxes.conf.tolist()
+                print(f"Confidence scores: {confidence_scores}")
 
-                # # Use the highest confidence score
-                # confidence = max(confidence_scores) * 100  # Convert to percentage
-                # print(f"Fire detection confidence: {confidence:.2f}%")
-                # normalized_confidence = confidence / 100
+                # Use the highest confidence score
+                confidence = max(confidence_scores) * 100  # Convert to percentage
+                print(f"Fire detection confidence: {confidence:.2f}%")
+                normalized_confidence = confidence / 100
 
-                # fire_percentage = (
-                #     flame_average * w_flame +
-                #     normalized_khoi * w_khoi +
-                #     normalized_confidence * w_ai
-                # ) * 100  # Convert to percentage
+                fire_percentage = (
+                    flame_average * w_flame +
+                    normalized_khoi * w_khoi +
+                    normalized_confidence * w_ai
+                ) * 100  # Convert to percentage
 
-                # # Save to DB
-                # save_history_fire_data(lua1, lua2, lua3, khoi, fire_percentage, confidence)
+                # Save to DB
+                save_history_fire_data(lua1, lua2, lua3, khoi, fire_percentage, confidence)
 
-                # fire_level = classify_fire_level(fire_percentage)
-                # # Compare with previous state
-                # if previous_fire_level != fire_level:
-                #     save_log(previous_fire_level, fire_level)
-                #     previous_fire_level = fire_level  # Update to new state
+                fire_level = classify_fire_level(fire_percentage)
+                # Compare with previous state
+                if previous_fire_level != fire_level:
+                    save_log(previous_fire_level, fire_level)
+                    previous_fire_level = fire_level  # Update to new state
 
-                # if fire_detected_start_time is None:
-                #     fire_detected_start_time = time.time()
-                #     print("Fire detected, starting timer...")
-                # else:
-                #     # Calculate elapsed time since fire was detected
-                #     elapsed_time = time.time() - fire_detected_start_time
-                #     print(f"Fire detected for {elapsed_time:.2f} seconds")
-                #     if elapsed_time >= 5:
-                #         xywh = result.boxes.xywh[0].tolist()
-                #         x_center = xywh[0] / result.orig_shape[1]
-                #         y_center = xywh[1] / result.orig_shape[0]
+                if fire_detected_start_time is None:
+                    fire_detected_start_time = time.time()
+                    print("Fire detected, starting timer...")
+                else:
+                    # Calculate elapsed time since fire was detected
+                    elapsed_time = time.time() - fire_detected_start_time
+                    print(f"Fire detected for {elapsed_time:.2f} seconds")
+                    if elapsed_time >= 5:
+                        xywh = result.boxes.xywh[0].tolist()
+                        x_center = xywh[0] / result.orig_shape[1]
+                        y_center = xywh[1] / result.orig_shape[0]
 
-                #         print("--------------------------------------------------------------------\n")
-                #         print(f"Fire detected at ({x_center:.2f}, {y_center:.2f})\n\n")
-                #         print("--------------------------------------------------------------------\n")
+                        print("--------------------------------------------------------------------\n")
+                        print(f"Fire detected at ({x_center:.2f}, {y_center:.2f})\n\n")
+                        print("--------------------------------------------------------------------\n")
 
-                #         data_to_send = TinhToan(x_center, y_center)
+                        data_to_send = TinhToan(x_center, y_center)
 
-                #         if mqtt_client.is_connected():
-                #             print("Sending data to MQTT...")
-                #             mqtt_client.publish("dieukhienbom", json.dumps(data_to_send))
+                        if mqtt_client.is_connected():
+                            print("Sending data to MQTT...")
+                            mqtt_client.publish("dieukhienbom", json.dumps(data_to_send))
 
-                #             # Reset timer after sending data
-                #             fire_detected_start_time = None
-                #         else:
-                #             print("MQTT client not connected.")
+                            # Reset timer after sending data
+                            fire_detected_start_time = None
+                        else:
+                            print("MQTT client not connected.")
         except Exception as e:
             print("Error processing frame:", e)
             continue  # Continue processing the next frame

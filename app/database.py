@@ -25,7 +25,7 @@ def save_history_fire_data(lua1, lua2, lua3, khoi, chay, detect):
     
     # Kiểm tra số lượng bản ghi
     count = historyFireCollection.count_documents({})
-    if count > 100:
+    if count > 150:
         # Tìm các bản ghi cũ nhất cần xóa
         old_docs = historyFireCollection.find().sort("date", ASCENDING).limit(count - 100)
         old_ids = [doc['_id'] for doc in old_docs]
@@ -39,6 +39,44 @@ def save_log(oldState, newState):
         'date': datetime.now()
     }
     logCollection.insert_one(data)
+
+    count = logCollection.count_documents({})
+    if count > 100:
+        # Tìm các bản ghi cũ nhất cần xóa
+        old_docs = historyFireCollection.find().sort("date", ASCENDING).limit(count - 100)
+        old_ids = [doc['_id'] for doc in old_docs]
+        if old_ids:
+            historyFireCollection.delete_many({'_id': {'$in': old_ids}})
+
+def get_history_fire_data():
+    data = []
+    for doc in historyFireCollection.find().sort("date", DESCENDING).limit(10):
+        doc.pop('_id')  # Remove the '_id' field
+        
+        # Convert the datetime object to a Unix timestamp
+        if isinstance(doc['date'], datetime):
+            timestamp = int(doc['date'].timestamp())  # Convert to timestamp (seconds since epoch)
+            doc['date'] = timestamp
+        else:
+            print(f"Unexpected type for date: {type(doc['date'])}")
+            continue  # Skip this document if the date type is invalid
+        
+        data.append(doc)
+    return data
+
+
+def get_logs():
+    data = []
+    for doc in logCollection.find().sort("date", DESCENDING).limit(20):
+        doc.pop('_id')
+        if isinstance(doc['date'], datetime):
+            timestamp = int(doc['date'].timestamp())  # Convert to timestamp (seconds since epoch)
+            doc['date'] = timestamp
+        else:
+            print(f"Unexpected type for date: {type(doc['date'])}")
+            continue  # Skip this document if the date type is invalid
+        data.append(doc)
+    return data
 
 # test save_history_fire_data
 # save_history_fire_data(100, 200, 300, 400, 50, 100)
