@@ -25,9 +25,9 @@ def save_history_fire_data(lua1, lua2, lua3, khoi, chay, detect):
     
     # Kiểm tra số lượng bản ghi
     count = historyFireCollection.count_documents({})
-    if count > 150:
+    if count > 50:
         # Tìm các bản ghi cũ nhất cần xóa
-        old_docs = historyFireCollection.find().sort("date", ASCENDING).limit(count - 100)
+        old_docs = historyFireCollection.find().sort("date", ASCENDING).limit(count - 50)
         old_ids = [doc['_id'] for doc in old_docs]
         if old_ids:
             historyFireCollection.delete_many({'_id': {'$in': old_ids}})
@@ -41,12 +41,14 @@ def save_log(oldState, newState):
     logCollection.insert_one(data)
 
     count = logCollection.count_documents({})
-    if count > 100:
+    if count > 50:
+        print(count - 50)
         # Tìm các bản ghi cũ nhất cần xóa
-        old_docs = historyFireCollection.find().sort("date", ASCENDING).limit(count - 100)
+        old_docs = logCollection.find().sort("date", ASCENDING).limit(count - 50)
         old_ids = [doc['_id'] for doc in old_docs]
         if old_ids:
-            historyFireCollection.delete_many({'_id': {'$in': old_ids}})
+            logCollection.delete_many({'_id': {'$in': old_ids}})
+        
 
 def get_history_fire_data():
     data = []
@@ -81,4 +83,4 @@ def get_logs():
 # test save_history_fire_data
 # save_history_fire_data(100, 200, 300, 400, 50, 100)
 # test save_log
-# save_log("safe", "safe")
+save_log("safe", "safe")

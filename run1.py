@@ -69,20 +69,23 @@ def get_image_stream_client():
             percent_of_fire = result.boxes.conf.tolist()[0]
             x_center = xywh[0] / result.orig_shape[1]
             y_center = xywh[1] / result.orig_shape[0]
+            w = xywh[2] / result.orig_shape[1]
+            h = xywh[3] / result.orig_shape[0]
             print("--------------------------------------------------------------------")
             print(f"Fire detected at ({x_center:.2f}, {y_center:.2f})")
+            print(f"Width: {w:.2f}, Height: {h:.2f}")
             print("--------------------------------------------------------------------")
 
             if fire_detected_time is None:
                 fire_detected_time = time.time()
                 
-            elif time.time() - fire_detected_time >= 7:
+            elif time.time() - fire_detected_time >= 5:
                 # Calculate servo angles
-                data_to_send = TinhToan(x_center, y_center)
+                data_to_send = TinhToan(x_center, y_center, w)
                 
                 # Send data to MQTT broker
                 if mqtt_client is not None and mqtt_client.is_connected():
-                    # mqtt_client.publish(PUMP_TOPIC, json.dumps(data_to_send))
+                    mqtt_client.publish(PUMP_TOPIC, json.dumps(data_to_send))
                     fire_detected_time = None  
                     print("SENDSENDSENDSENDSENDSENDSENDSENDSENDSENDSENDSENDSENDSEND")  
                 else:
@@ -102,7 +105,7 @@ def get_image_stream_client():
                b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
 
 # get all record from historyFire table in mongodb
-@app.route('/history')
+@app.route('/history', methods=['GET'])
 def get_history():
     return json.dumps(get_history_fire_data())
 
