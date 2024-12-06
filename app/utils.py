@@ -9,7 +9,7 @@ from app.database import save_history_fire_data, save_log
 from app.websocket import send_data
 
 # Load a model
-model = YOLO("app/model/best.pt")
+model = YOLO("app/model/best1.pt")
 # Thêm biến toàn cục để lưu trạng thái fire_level trước đó
 previous_fire_level = None
 
