@@ -55,7 +55,7 @@ def stream():
 def get_image_stream_client():
     global mqtt_client, percent_of_fire
 
-    results = model("http://192.168.1.2/stream", stream=True)
+    results = model("http://172.20.10.7./stream", stream=True)
     fire_detected_time = None
 
     for result in results:
